@@ -1,7 +1,7 @@
-<script>
+<script lang="ts">
 	import { onMount } from 'svelte'
 
-  export let name
+  export let name: string
 
 	let counter = 0 // @hmr:keep
 

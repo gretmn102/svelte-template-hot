@@ -1,9 +1,13 @@
+// @ts-check
 import svelte from 'rollup-plugin-svelte-hot'
-import resolve from '@rollup/plugin-node-resolve'
 import commonjs from '@rollup/plugin-commonjs'
+import resolve from '@rollup/plugin-node-resolve'
 import livereload from 'rollup-plugin-livereload'
 import { terser } from 'rollup-plugin-terser'
+import sveltePreprocess from 'svelte-preprocess'
 import hmr from 'rollup-plugin-hot'
+import typescript from '@rollup/plugin-typescript'
+import css from 'rollup-plugin-css-only'
 
 // Set this to true to pass the --single flag to sirv (this serves your
 // index.html for any unmatched route, which is a requirement for SPA
@@ -26,6 +30,8 @@ const isDev = isWatch || isLiveReload
 const isProduction = !isDev
 
 const isHot = isWatch && !isLiveReload
+
+console.log(JSON.stringify({ isNollup, isWatch, isLiveReload, isDev, isHot }))
 
 function serve() {
   let server
@@ -54,37 +60,39 @@ function serve() {
 }
 
 export default {
-  input: 'src/main.js',
+  input: 'src/main.ts',
   output: {
-    sourcemap: true,
+    sourcemap: !isProduction,
     format: 'iife',
     name: 'app',
-    file: 'public/build/bundle.js',
+    file: 'public/build/bundle.js'
   },
   plugins: [
     svelte({
-      // enable run-time checks when not in production
-      dev: !isProduction,
-      // we'll extract any component CSS out into
-      // a separate file - better for performance
-      // NOTE when hot option is enabled, a blank file will be written to
-      // avoid CSS rules conflicting with HMR injected ones
-      css: css => {
-        css.write(isNollup ? 'build/bundle.css' : 'bundle.css')
+      preprocess: sveltePreprocess({ sourceMap: !isProduction }),
+      compilerOptions: {
+        // enable run-time checks when not in production
+        dev: !isProduction
       },
+      // @ts-ignore
       hot: isHot && {
         // Optimistic will try to recover from runtime
         // errors during component init
         optimistic: true,
         // Turn on to disable preservation of local component
         // state -- i.e. non exported `let` variables
-        noPreserveState: false,
+        preserveState: true,
 
         // See docs of rollup-plugin-svelte-hot for all available options:
         //
         // https://github.com/rixo/rollup-plugin-svelte-hot#usage
       },
     }),
+    // we'll extract any component CSS out into
+    // a separate file - better for performance
+    // NOTE when hot option is enabled, a blank file will be written to
+    // avoid CSS rules conflicting with HMR injected ones
+    css({ output: isNollup ? 'build/bundle.css' : 'bundle.css' }),
 
     // If you have external dependencies installed from
     // npm, you'll most likely need these plugins. In
@@ -93,10 +101,14 @@ export default {
     // https://github.com/rollup/plugins/tree/master/packages/commonjs
     resolve({
       browser: true,
-      dedupe: ['svelte'],
+      dedupe: ['svelte']
     }),
     commonjs(),
 
+    typescript({
+      sourceMap: !isProduction,
+      inlineSources: !isProduction
+    }),
     // In dev mode, call `npm run start` once
     // the bundle has been generated
     isDev && !isNollup && serve(),
